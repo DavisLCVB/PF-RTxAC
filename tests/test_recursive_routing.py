@@ -13,7 +13,8 @@ import math
 def populate_hosts_device(device):
     if("hosts" in device):
         # Si el router central tiene las conexiones finales (pcs), el return de bits cambia a solo retornar math.ceil(math.log2(device["hosts"]))
-        return { "hosts": device["hosts"], "bits": math.ceil(math.log2(device["hosts"] + 2 +1))}
+        device["bits"] = math.ceil(math.log2(device["hosts"] + 2 + 1))
+        return {"hosts": device["hosts"]}
 
     if("connections" in device):
         total_hosts = 0
@@ -22,8 +23,8 @@ def populate_hosts_device(device):
 
         device["hosts"] = total_hosts
         # Si el router central tiene las conexiones finales (pcs), el lamba cambia a retornar el length de connections
-        device["bits"] = math.ceil(math.log2(max(list(map(lambda x: x["hosts"], device["connections"]))) + 2 + 1))
-        return { "hosts": device["hosts"], "bits": device["bits"]}
+        device["bits"] = math.ceil(max(list(map(lambda x: x["bits"], device["connections"])))) + math.ceil(math.log2(len(device["connections"])))
+        return {"hosts": device["hosts"]}
 
 red_central = {
     "child_names": "Edificios",
@@ -32,10 +33,104 @@ red_central = {
             "child_names": "Pisos",
             "connections": [
                 {
-                    "hosts": 30
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
                 },
                 {
-                    "hosts": 60
+                    "hosts": 30
+                },
+                ]
+        },
+{
+            "child_names": "Pisos",
+            "connections": [
+                {
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+                {
+                    "hosts": 30
+                },
+{
+                    "hosts": 30
+                },
+                ]
+        },
+{
+            "child_names": "Pisos",
+            "connections": [
+                {
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+                {
+                    "hosts": 30
+                },
+{
+                    "hosts": 30
+                },
+                ]
+        },
+{
+            "child_names": "Pisos",
+            "connections": [
+                {
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+{
+                    "hosts": 20
+                },
+                {
+                    "hosts": 30
+                },
+{
+                    "hosts": 30
+                },
+
+{
+                    "hosts": 30
                 },
                 ]
         },
@@ -69,8 +164,10 @@ class Router:
     def display_structure(self, level=0):
         indent = "  " * level
         print(f"{indent}- Router: {self.name}, Network: {self.segment.network}")
+        """
         for i, subnet in enumerate(self.segment.subnets):
             print(f"{indent}  Subnet {i+1}: {subnet}")
+        """
         for child in self.children:
             child.display_structure(level + 1)
 
@@ -86,6 +183,6 @@ def divide_network(device, router: Router):
                 router.add_child_router(subnet_router)
 
 
-central_router = Router("Central", "192.168.0.0", 32 - red_central["bits"])
+central_router = Router("Central", "192.162.0.0", 32 - red_central["bits"])
 divide_network(red_central, central_router)
 central_router.display_structure()
