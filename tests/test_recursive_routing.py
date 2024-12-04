@@ -38,8 +38,7 @@ red_central = {
             "connections": [
                 {
                     "child_names": "Cuartos",
-                    "hosts" : 2,
-                    "hosts" : 20,
+                    "hosts": 20,
                     "connections": [
                         {
                             "hosts": 70
@@ -47,7 +46,7 @@ red_central = {
                         {
                             "hosts": 30
                         },
-{
+                        {
                             "hosts": 30
                         }
                     ]

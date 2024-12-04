@@ -18,8 +18,8 @@ A = np.array([
     [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, 4, 5, 5, 0]
 ])
 
-pg = 1  # Primer nodo
-ug = 14  # Último nodo
+pg = 3  # Primer nodo
+ug = 9  # Último nodo
 
 nc = len(A)  # Número de nodos
 mejora = []  # Mejora de cada generación
