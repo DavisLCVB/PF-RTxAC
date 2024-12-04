@@ -11,7 +11,7 @@ import math
 
 
 def populate_hosts_device(device):
-    if("connections" not in device):
+    if("hosts" in device and "connections" not in device):
         # Si el router central tiene las conexiones finales (pcs), el return de bits cambia a solo retornar math.ceil(math.log2(device["hosts"]))
         device["bits"] = math.ceil(math.log2(device["hosts"] + 2 + 1))
         return {"hosts": device["hosts"]}
@@ -21,7 +21,7 @@ def populate_hosts_device(device):
         for connection in device["connections"]:
             total_hosts += populate_hosts_device(connection)["hosts"]
 
-        if "hosts" in device:
+        if("hosts" in device):
             device["hosts"] += total_hosts
         else:
             device["hosts"] = total_hosts
@@ -38,15 +38,17 @@ red_central = {
             "connections": [
                 {
                     "child_names": "Cuartos",
+                    "hosts" : 2,
+                    "hosts" : 20,
                     "connections": [
                         {
-                            "hosts": 20
+                            "hosts": 70
                         },
                         {
-                            "hosts": 20
+                            "hosts": 30
                         },
-                        {
-                            "hosts": 20
+{
+                            "hosts": 30
                         }
                     ]
                 },
@@ -65,7 +67,7 @@ red_central = {
                 {
                     "hosts": 30
                 },
-                ]
+            ]
         },
         {
             "child_names": "Pisos",
@@ -200,3 +202,5 @@ def divide_network(device, router: Router):
 central_router = Router("Central", "192.162.0.0", 32 - red_central["bits"])
 divide_network(red_central, central_router)
 central_router.display_structure()
+
+#
