@@ -3,7 +3,7 @@ import random
 
 A = np.array([
     [0, 5, 4, 5, 6, 3, 20, np.inf, np.inf, np.inf, 10, np.inf, np.inf, np.inf],
-    [5, 0, np.inf, 4, np.inf, np.inf, np.inf, np.inf, n+p.inf, np.inf, np.inf, np.inf, np.inf, np.inf],
+    [5, 0, np.inf, 4, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf],
     [4, np.inf, 0, 2, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf],
     [5, 4, 2, 0, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf],
     [6, np.inf, np.inf, np.inf, 0, 4, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf],

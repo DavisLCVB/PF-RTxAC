@@ -11,7 +11,7 @@ import math
 
 
 def populate_hosts_device(device):
-    if("hosts" in device):
+    if("connections" not in device):
         # Si el router central tiene las conexiones finales (pcs), el return de bits cambia a solo retornar math.ceil(math.log2(device["hosts"]))
         device["bits"] = math.ceil(math.log2(device["hosts"] + 2 + 1))
         return {"hosts": device["hosts"]}
@@ -21,10 +21,14 @@ def populate_hosts_device(device):
         for connection in device["connections"]:
             total_hosts += populate_hosts_device(connection)["hosts"]
 
-        device["hosts"] = total_hosts
+        if "hosts" in device:
+            device["hosts"] += total_hosts
+        else:
+            device["hosts"] = total_hosts
         # Si el router central tiene las conexiones finales (pcs), el lamba cambia a retornar el length de connections
         device["bits"] = math.ceil(max(list(map(lambda x: x["bits"], device["connections"])))) + math.ceil(math.log2(len(device["connections"])))
         return {"hosts": device["hosts"]}
+
 
 red_central = {
     "child_names": "Edificios",
@@ -33,18 +37,29 @@ red_central = {
             "child_names": "Pisos",
             "connections": [
                 {
+                    "child_names": "Cuartos",
+                    "connections": [
+                        {
+                            "hosts": 20
+                        },
+                        {
+                            "hosts": 20
+                        },
+                        {
+                            "hosts": 20
+                        }
+                    ]
+                },
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
-                    "hosts": 20
-                },
-{
+                {
                     "hosts": 20
                 },
                 {
@@ -52,87 +67,86 @@ red_central = {
                 },
                 ]
         },
-{
+        {
             "child_names": "Pisos",
             "connections": [
                 {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
                 {
                     "hosts": 30
                 },
-{
+                {
                     "hosts": 30
                 },
-                ]
+            ]
         },
-{
+        {
             "child_names": "Pisos",
             "connections": [
                 {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
                 {
                     "hosts": 30
                 },
-{
+                {
                     "hosts": 30
                 },
-                ]
+            ]
         },
-{
+        {
             "child_names": "Pisos",
             "connections": [
                 {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
-{
+                {
                     "hosts": 20
                 },
                 {
                     "hosts": 30
                 },
-{
+                {
                     "hosts": 30
                 },
-
-{
+                {
                     "hosts": 30
                 },
-                ]
+            ]
         },
     ]
 }
