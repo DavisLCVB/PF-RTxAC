@@ -153,7 +153,9 @@ def divide_network(device, router: Router, ips_connections):
         for i, subnet in enumerate(subnets):
             if i < len(device["connections"]):
                 subnet_router = Router(
-                    f"{device['id']}", subnet.network_address, subnet.prefixlen
+                    f"{device["connections"][i]['id']}",
+                    subnet.network_address,
+                    subnet.prefixlen,
                 )
                 divide_network(device["connections"][i], subnet_router, ips_connections)
                 router.add_child_router(subnet_router)
@@ -234,7 +236,9 @@ red_central = {
 if __name__ == "__main__":
     connections_table = extract_connections(red_central)
     red = subneteo(red_central, "192.162.0.0", connections_table)
+
     print("Structure")
     red["central_router"].display_structure()
-    print("IP Connections")
+
+    print("Structure")
     print_ip_connections(red["ip_connections"])
