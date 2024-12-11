@@ -119,7 +119,7 @@ ip_connection {
 }
 """
 
-def divide_network(device, router: Router, ips_connections):
+def divide_network(device, router: Router, ips_connections, connections_table):
 
     ip_connection = {"id": device["id"], "connections": []}
     if "connections" in device:
@@ -143,7 +143,7 @@ def divide_network(device, router: Router, ips_connections):
             if i < num_subnets:
                 if( i < len(device["connections"])):
                     subnet_router = Router(f"{device["connections"][i]['id']}", subnet.network_address, subnet.prefixlen)
-                    divide_network(device["connections"][i], subnet_router, ips_connections)
+                    divide_network(device["connections"][i], subnet_router, ips_connections, connections_table)
                     router.add_child_router(subnet_router)
                 else:
                     if("hosts" in device and i == num_subnets - 2):
@@ -175,16 +175,16 @@ def print_ip_connections(node, level=0):
             print_ip_connections(sing_node["connections"], level + 1)
 
 
-def subneteo(root, ip_base, connections):
+def subneteo(root, ip_base, connections_table):
     populated_root = copy.deepcopy(root)
-    populate_neighbors(populated_root, connections)
+    populate_neighbors(populated_root, connections_table)
     populate_hosts_device(populated_root)
     print_network_structure(root)
 
     central_router = Router("Central", ip_base, 32 - populated_root["bits"])
 
     ips_connections = []
-    divide_network(root, central_router, ips_connections)
+    divide_network(root, central_router, ips_connections, connections_table)
     return { "ip_connections": ips_connections, "central_router": central_router }
 
 red_central = {
