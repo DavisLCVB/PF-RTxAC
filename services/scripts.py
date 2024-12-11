@@ -1,495 +1,120 @@
-def generate_scripts(red: dict):
-    script = ""
-    with open("output.txt", "w") as f:
-        f.write(generate_scripts_recursive(red, script))
+from routing import *
 
 
-def generate_scripts_recursive(red: dict, script: str):
-    if "direct_hosts" in red:
-        for i, host in enumerate(red["direct_hosts"]):
-            script += generar_conf_host(host, i, red["name"])
-    elif "router_ip" in red:
-        script += generar_conf_router(red)
-    if "connections" in red:
-        for conn in red["connections"]:
-            script = generate_scripts_recursive(conn, script)
-    return script + "\n"
+class RouterConf:
+    def __init__(self):
+        self.id = ""
+        self.interfaces = []
+        self._interface_counter = 0
+
+    def add_interface(self, ip, mask):
+        self.interfaces.append(
+            {"name": f"FastEthernet0/{self._interface_counter}", "ip": ip, "mask": mask}
+        )
+        self._interface_counter += 1
+
+    def __str__(self):
+        return f"Router {self.id}\n{self.interfaces}"
 
 
-def generar_conf_router(info: dict):
-    cfg = []
-    cfg.append("-- ROUTER --")
-    cfg.append("enable")
-    cfg.append("configure terminal")
-    if "name" in info:
-        cfg.append(f"hostname {info['name'].replace(' ', '_')}")
-    if "router_subnets" in info:
-        for i, rs in enumerate(info["router_subnets"]):
-            subnet = rs["subnet"]
-            _, prefix = subnet.split("/")
-            mask = prefix_to_mask(prefix)
-            interface = f"FastEthernet0/{i}"
-            if "local_ip" in rs:
-                local_ip = rs["local_ip"]
-            else:
-                local_ip = rs["ip_router_1"]
-            cfg.append(f"interface {interface}")
-            cfg.append(f"ip address {local_ip} {mask}")
-            cfg.append("no shutdown")
-        for rs in info["router_subnets"]:
-            red, prefix = rs["subnet"].split("/")
-            mask = prefix_to_mask(prefix)
-            ip2: str
-            if "remote_ip" in rs:
-                ip2 = rs["remote_ip"]
-            else:
-                ip2 = rs["ip_router_2"]
-            cfg.append(f"ip route {red} {mask} {ip2}")
-    cfg.append("end")
-    cfg.append("write memory")
-    return "\n".join(cfg) + "\n"
+def generate_scripts(router: Router, connections: list):
+    list = []
+    generate_network_structure(router, list)
+    fill_connections(connections, list)
+    return list
 
 
-def generar_conf_host(info: dict, i: int, area: str):
-    cfg = []
-    cfg.append(f"-- HOST {i} {area} --")
-    cfg.append(f"ip: {info['host_ip']}")
-    cfg.append(f"gateway: {info['gateway']}")
-    return "\n".join(cfg) + "\n"
+def generate_network_structure(router: Router, list: list[RouterConf]):
+    if router.children:
+        for child in router.children:
+            generate_network_structure(child, list)
+    else:
+        router_conf = RouterConf()
+        name = router.name
+        if name.endswith("-hosts"):
+            name = name[:-6]
+        router_conf.id = name
+        ip = router.segment.network.network_address + 1
+        mask = router.segment.network.netmask
+        router_conf.add_interface(ip, mask)
+        list.append(router_conf)
 
 
-def prefix_to_mask(prefix):
-    bits = int(prefix)
-    mask = (0xFFFFFFFF << (32 - bits)) & 0xFFFFFFFF
-    return f"{(mask >> 24) & 0xff}.{(mask >> 16) & 0xff}.{(mask >> 8) & 0xff}.{mask & 0xff}"
+def fill_connections(connections: list, list: list[RouterConf]):
+    for connection in connections:
+        id = connection["id"]
+        conns = connection["connections"]
+        router = find_router(id, list)
+        if not router:
+            router = RouterConf()
+            router.id = id
+            list.append(router)
+        for conn in conns:
+            router2 = find_router(conn["id"], list)
+            if not router2:
+                router2 = RouterConf()
+                router2.id = conn["id"]
+                list.append(router2)
+            ipr2 = conn["ip"]
+            mask = conn["subnet"].netmask
+            ipr1 = conn["gateway"]
+            router.add_interface(ipr1, mask)
+            router2.add_interface(ipr2, mask)
 
 
-def main():
-    red = {
-        "name": "Router Central",
-        "router_ip": "192.168.0.1",
-        "router_subnets": [
-            {
-                "connection_to": "Area-1",
-                "subnet": "192.168.0.0/19",
-                "local_ip": "192.168.0.1",
-                "remote_ip": "192.168.0.2",
-            },
-            {
-                "connection_to": "Area-2",
-                "subnet": "192.168.32.0/19",
-                "local_ip": "192.168.32.1",
-                "remote_ip": "192.168.32.2",
-            },
-        ],
-        "connections": [
-            {
-                "name": "Area-1",
-                "router_ip": "192.168.0.1",
-                "router_subnets": [
-                    {
-                        "connection_to": "Edificio-1",
-                        "subnet": "192.168.0.0/22",
-                        "local_ip": "192.168.0.1",
-                        "remote_ip": "192.168.0.2",
-                    },
-                    {
-                        "connection_to": "Edificio-2",
-                        "subnet": "192.168.4.0/22",
-                        "local_ip": "192.168.4.1",
-                        "remote_ip": "192.168.4.2",
-                    },
-                    {
-                        "connection_to": "Edificio-3",
-                        "subnet": "192.168.8.0/22",
-                        "local_ip": "192.168.8.1",
-                        "remote_ip": "192.168.8.2",
-                    },
-                    {
-                        "connection_between": ["Edificio-1", "Edificio-2"],
-                        "subnet": "192.168.28.0/22",
-                        "ip_router_1": "192.168.28.1",
-                        "ip_router_2": "192.168.28.2",
-                    },
-                    {
-                        "connection_between": ["Edificio-1", "Edificio-3"],
-                        "subnet": "192.168.24.0/22",
-                        "ip_router_1": "192.168.24.1",
-                        "ip_router_2": "192.168.24.2",
-                    },
-                    {
-                        "connection_between": ["Edificio-2", "Edificio-3"],
-                        "subnet": "192.168.20.0/22",
-                        "ip_router_1": "192.168.20.1",
-                        "ip_router_2": "192.168.20.2",
-                    },
-                ],
-                "connections": [
-                    {
-                        "name": "Edificio-1",
-                        "router_ip": "192.168.0.1",
-                        "router_subnets": [
-                            {
-                                "connection_to": "Piso-1",
-                                "subnet": "192.168.0.0/25",
-                                "local_ip": "192.168.0.1",
-                                "remote_ip": "192.168.0.2",
-                            },
-                            {
-                                "connection_to": "Piso-2",
-                                "subnet": "192.168.0.128/25",
-                                "local_ip": "192.168.0.129",
-                                "remote_ip": "192.168.0.130",
-                            },
-                            {
-                                "connection_to": "Piso-3",
-                                "subnet": "192.168.1.0/25",
-                                "local_ip": "192.168.1.1",
-                                "remote_ip": "192.168.1.2",
-                            },
-                        ],
-                        "connections": [
-                            {
-                                "name": "Piso-1",
-                                "direct_hosts_subnet": "192.168.0.0/25",
-                                "gateway": "192.168.0.1",
-                                "direct_hosts": [
-                                    {
-                                        "host_ip": "192.168.0.2",
-                                        "gateway": "192.168.0.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.3",
-                                        "gateway": "192.168.0.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.4",
-                                        "gateway": "192.168.0.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.5",
-                                        "gateway": "192.168.0.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.6",
-                                        "gateway": "192.168.0.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.7",
-                                        "gateway": "192.168.0.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.8",
-                                        "gateway": "192.168.0.1",
-                                    },
-                                ],
-                            },
-                            {
-                                "name": "Piso-2",
-                                "direct_hosts_subnet": "192.168.0.128/25",
-                                "gateway": "192.168.0.129",
-                                "direct_hosts": [
-                                    {
-                                        "host_ip": "192.168.0.130",
-                                        "gateway": "192.168.0.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.131",
-                                        "gateway": "192.168.0.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.132",
-                                        "gateway": "192.168.0.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.133",
-                                        "gateway": "192.168.0.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.0.134",
-                                        "gateway": "192.168.0.129",
-                                    },
-                                ],
-                            },
-                            {
-                                "name": "Piso-3",
-                                "direct_hosts_subnet": "192.168.1.0/25",
-                                "gateway": "192.168.1.1",
-                                "direct_hosts": [
-                                    {
-                                        "host_ip": "192.168.1.2",
-                                        "gateway": "192.168.1.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.1.3",
-                                        "gateway": "192.168.1.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.1.4",
-                                        "gateway": "192.168.1.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.1.5",
-                                        "gateway": "192.168.1.1",
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                    {
-                        "name": "Edificio-2",
-                        "router_ip": "192.168.4.1",
-                        "router_subnets": [
-                            {
-                                "connection_to": "Piso-1",
-                                "subnet": "192.168.4.0/25",
-                                "local_ip": "192.168.4.1",
-                                "remote_ip": "192.168.4.2",
-                            },
-                            {
-                                "connection_to": "Piso-2",
-                                "subnet": "192.168.4.128/25",
-                                "local_ip": "192.168.4.129",
-                                "remote_ip": "192.168.4.130",
-                            },
-                        ],
-                        "connections": [
-                            {
-                                "name": "Piso-1",
-                                "direct_hosts_subnet": "192.168.4.0/25",
-                                "gateway": "192.168.4.1",
-                                "direct_hosts": [
-                                    {
-                                        "host_ip": "192.168.4.2",
-                                        "gateway": "192.168.4.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.3",
-                                        "gateway": "192.168.4.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.4",
-                                        "gateway": "192.168.4.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.5",
-                                        "gateway": "192.168.4.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.6",
-                                        "gateway": "192.168.4.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.7",
-                                        "gateway": "192.168.4.1",
-                                    },
-                                ],
-                            },
-                            {
-                                "name": "Piso-2",
-                                "direct_hosts_subnet": "192.168.4.128/25",
-                                "gateway": "192.168.4.129",
-                                "direct_hosts": [
-                                    {
-                                        "host_ip": "192.168.4.130",
-                                        "gateway": "192.168.4.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.131",
-                                        "gateway": "192.168.4.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.132",
-                                        "gateway": "192.168.4.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.133",
-                                        "gateway": "192.168.4.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.134",
-                                        "gateway": "192.168.4.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.135",
-                                        "gateway": "192.168.4.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.136",
-                                        "gateway": "192.168.4.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.4.137",
-                                        "gateway": "192.168.4.129",
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                    {
-                        "name": "Edificio-3",
-                        "router_ip": "192.168.8.1",
-                        "router_subnets": [
-                            {
-                                "connection_to": "Piso-1",
-                                "subnet": "192.168.8.0/25",
-                                "local_ip": "192.168.8.1",
-                                "remote_ip": "192.168.8.2",
-                            },
-                            {
-                                "connection_to": "Piso-2",
-                                "subnet": "192.168.8.128/25",
-                                "local_ip": "192.168.8.129",
-                                "remote_ip": "192.168.8.130",
-                            },
-                        ],
-                        "connections": [
-                            {
-                                "name": "Piso-1",
-                                "direct_hosts_subnet": "192.168.8.0/25",
-                                "gateway": "192.168.8.1",
-                                "direct_hosts": [
-                                    {
-                                        "host_ip": "192.168.8.2",
-                                        "gateway": "192.168.8.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.8.3",
-                                        "gateway": "192.168.8.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.8.4",
-                                        "gateway": "192.168.8.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.8.5",
-                                        "gateway": "192.168.8.1",
-                                    },
-                                ],
-                            },
-                            {
-                                "name": "Piso-2",
-                                "direct_hosts_subnet": "192.168.8.128/25",
-                                "gateway": "192.168.8.129",
-                                "direct_hosts": [
-                                    {
-                                        "host_ip": "192.168.8.130",
-                                        "gateway": "192.168.8.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.8.131",
-                                        "gateway": "192.168.8.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.8.132",
-                                        "gateway": "192.168.8.129",
-                                    },
-                                    {
-                                        "host_ip": "192.168.8.133",
-                                        "gateway": "192.168.8.129",
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                ],
-            },
-            {
-                "name": "Area-2",
-                "router_ip": "192.168.32.1",
-                "router_subnets": [
-                    {
-                        "connection_to": "Edificio-1",
-                        "subnet": "192.168.32.0/21",
-                        "local_ip": "192.168.32.1",
-                        "remote_ip": "192.168.32.2",
-                    }
-                ],
-                "connections": [
-                    {
-                        "name": "Edificio-1",
-                        "router_ip": "192.168.32.1",
-                        "router_subnets": [
-                            {
-                                "connection_to": "Piso-1",
-                                "subnet": "192.168.32.0/24",
-                                "local_ip": "192.168.32.1",
-                                "remote_ip": "192.168.32.2",
-                            },
-                            {
-                                "connection_to": "Piso-2",
-                                "subnet": "192.168.33.0/24",
-                                "local_ip": "192.168.33.1",
-                                "remote_ip": "192.168.33.2",
-                            },
-                        ],
-                        "connections": [
-                            {
-                                "name": "Piso-1",
-                                "direct_hosts_subnet": "192.168.32.0/24",
-                                "gateway": "192.168.32.1",
-                                "direct_hosts": [
-                                    {
-                                        "host_ip": "192.168.32.2",
-                                        "gateway": "192.168.32.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.32.3",
-                                        "gateway": "192.168.32.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.32.4",
-                                        "gateway": "192.168.32.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.32.5",
-                                        "gateway": "192.168.32.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.32.6",
-                                        "gateway": "192.168.32.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.32.7",
-                                        "gateway": "192.168.32.1",
-                                    },
-                                ],
-                            },
-                            {
-                                "name": "Piso-2",
-                                "direct_hosts_subnet": "192.168.33.0/24",
-                                "gateway": "192.168.33.1",
-                                "direct_hosts": [
-                                    {
-                                        "host_ip": "192.168.33.2",
-                                        "gateway": "192.168.33.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.33.3",
-                                        "gateway": "192.168.33.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.33.4",
-                                        "gateway": "192.168.33.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.33.5",
-                                        "gateway": "192.168.33.1",
-                                    },
-                                    {
-                                        "host_ip": "192.168.33.6",
-                                        "gateway": "192.168.33.1",
-                                    },
-                                ],
-                            },
-                        ],
-                    }
-                ],
-            },
-        ],
-    }
-    generate_scripts(red)
+def find_router(id, list):
+    for router in list:
+        if router.id == id:
+            return router
+    return None
 
+
+red_central = {
+    "id": "Central-1",
+    "connections": [
+        {
+            "id": "Central-1-Edificio-1",
+            "hosts": 100,
+            "connections": [
+                {
+                    "id": "Central-1-Edificio-1-Piso-1",
+                    "hosts": 20,
+                    "connections": [
+                        {"id": "Central-1-Edificio-1-Piso-1-Cuarto-1", "hosts": 70},
+                        {"id": "Central-1-Edificio-1-Piso-1-Cuarto-2", "hosts": 30},
+                        {"id": "Central-1-Edificio-1-Piso-1-Cuarto-3", "hosts": 30},
+                    ],
+                },
+                {"id": "Central-1-Edificio-1-Piso-2", "hosts": 20},
+                {"id": "Central-1-Edificio-1-Piso-3", "hosts": 20},
+                {"id": "Central-1-Edificio-1-Piso-4", "hosts": 20},
+                {"id": "Central-1-Edificio-1-Piso-5", "hosts": 20},
+                {"id": "Central-1-Edificio-1-Piso-6", "hosts": 30},
+            ],
+        },
+        {
+            "id": "Central-1-Edificio-2",
+            "connections": [
+                {"id": "Central-1-Edificio-2-Piso-1", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-2", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-3", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-4", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-5", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-6", "hosts": 30},
+                {"id": "Central-1-Edificio-2-Piso-7", "hosts": 30},
+            ],
+        },
+    ],
+}
 
 if __name__ == "__main__":
-    main()
+    connections_table = extract_connections(red_central)
+    ip_base = "192.162.0.0"
+    prefix = 17
+    red = subneteo(red_central, ip_base, prefix, connections_table)
+    router = red["central_router"]
+    connections = red["ip_connections"]
+    list = generate_scripts(router, connections)
+    print("-----")
+    for router in list:
+        print(router)

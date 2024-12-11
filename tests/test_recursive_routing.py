@@ -7,9 +7,11 @@ Device {
   "connections"?: Device[]
 }
 """
+
 import ipaddress
 import math
 import copy
+
 
 def extract_connections(node, parent=None):
     connections = []
@@ -19,6 +21,7 @@ def extract_connections(node, parent=None):
         for child in node["connections"]:
             connections.extend(extract_connections(child, node["id"]))
     return connections
+
 
 def print_network_structure(node, level=0):
     indent = "  " * level
@@ -34,10 +37,10 @@ def print_network_structure(node, level=0):
 
 
 def populate_neighbors(device, all_connections):
-    if("connections" in device):
+    if "connections" in device:
         total_neighbors = 0
         for connection in all_connections:
-            if(connection["from"] == device["id"]):
+            if connection["from"] == device["id"]:
                 total_neighbors += 1
 
         device["neighbors"] = total_neighbors
@@ -57,23 +60,26 @@ def print_network_structure(node, level=0):
         for connection in node["connections"]:
             print_network_structure(connection, level + 1)
 
+
 def populate_hosts_device(device):
-    if("hosts" in device and "connections" not in device):
+    if "hosts" in device and "connections" not in device:
         # Si el router central tiene las conexiones finales (pcs), el return de bits cambia a solo retornar math.ceil(math.log2(device["hosts"]))
         device["bits"] = math.ceil(math.log2(device["hosts"] + 2 + 1))
         return {"hosts": device["hosts"]}
 
-    if("connections" in device):
+    if "connections" in device:
         total_hosts = 0
         for connection in device["connections"]:
             total_hosts += populate_hosts_device(connection)["hosts"]
 
-        if("hosts" in device):
+        if "hosts" in device:
             device["hosts"] += total_hosts
         else:
             device["hosts"] = total_hosts
         # Si el router central tiene las conexiones finales (pcs), el lamba cambia a retornar el length de connections
-        device["bits"] = math.ceil(max(list(map(lambda x: x["bits"], device["connections"])))) + math.ceil(math.log2(device["neighbors"] + 2 ))
+        device["bits"] = math.ceil(
+            max(list(map(lambda x: x["bits"], device["connections"])))
+        ) + math.ceil(math.log2(device["neighbors"] + 2))
         return {"hosts": device["hosts"]}
 
 
@@ -83,8 +89,13 @@ class NetworkSegment:
         self.subnets = []
 
     def subdivide(self, num_subnets):
-        self.subnets = list(self.network.subnets(new_prefix=self.network.prefixlen + (num_subnets - 1).bit_length()))
+        self.subnets = list(
+            self.network.subnets(
+                new_prefix=self.network.prefixlen + (num_subnets - 1).bit_length()
+            )
+        )
         return self.subnets
+
 
 class Router:
     def __init__(self, name, ip_base, prefix):
@@ -119,37 +130,53 @@ ip_connection {
 }
 """
 
+
 def divide_network(device, router: Router, ips_connections, connections_table):
 
     ip_connection = {"id": device["id"], "connections": []}
     if "connections" in device:
         num_subnets = len(device["connections"]) + 1  # +1 for neighbors
         if "hosts" in device:
-            num_subnets += 1 # +1 for hosts
+            num_subnets += 1  # +1 for hosts
         subnets = router.subdivide_network(num_subnets)
 
         subnet_connetions = list(subnets[-1].subnets(new_prefix=30))
         for connection in connections_table:
-            if(connection["from"] == device["id"]):
+            if connection["from"] == device["id"]:
                 child_connection = {}
                 child_connection["id"] = connection["to"]
                 child_connection["subnet"] = subnet_connetions.pop(0)
-                child_connection["gateway"] = child_connection["subnet"].network_address + 1
+                child_connection["gateway"] = (
+                    child_connection["subnet"].network_address + 1
+                )
                 child_connection["ip"] = child_connection["subnet"].network_address + 2
                 ip_connection["connections"].append(child_connection)
 
         ips_connections.append(ip_connection)
         for i, subnet in enumerate(subnets):
             if i < num_subnets:
-                if( i < len(device["connections"])):
-                    subnet_router = Router(f"{device["connections"][i]['id']}", subnet.network_address, subnet.prefixlen)
-                    divide_network(device["connections"][i], subnet_router, ips_connections, connections_table)
+                if i < len(device["connections"]):
+                    subnet_router = Router(
+                        f"{device["connections"][i]['id']}",
+                        subnet.network_address,
+                        subnet.prefixlen,
+                    )
+                    divide_network(
+                        device["connections"][i],
+                        subnet_router,
+                        ips_connections,
+                        connections_table,
+                    )
                     router.add_child_router(subnet_router)
                 else:
-                    if("hosts" in device and i == num_subnets - 2):
+                    if "hosts" in device and i == num_subnets - 2:
                         print("Device with hosts", device["id"])
 
-                        subnet_router = Router(f"{device["id"]}-hosts", subnet.network_address, subnet.prefixlen)
+                        subnet_router = Router(
+                            f"{device["id"]}-hosts",
+                            subnet.network_address,
+                            subnet.prefixlen,
+                        )
                         router.add_child_router(subnet_router)
 
 
@@ -190,7 +217,8 @@ def subneteo(root, ip_base, prefix, connections_table):
 
     ips_connections = []
     divide_network(root, central_router, ips_connections, connections_table)
-    return { "ip_connections": ips_connections, "central_router": central_router }
+    return {"ip_connections": ips_connections, "central_router": central_router}
+
 
 red_central = {
     "id": "Central-1",
@@ -203,85 +231,40 @@ red_central = {
                     "id": "Central-1-Edificio-1-Piso-1",
                     "hosts": 20,
                     "connections": [
-                        {
-                            "id": "Central-1-Edificio-1-Piso-1-Cuarto-1",
-                            "hosts": 70
-                        },
-                        {
-                            "id": "Central-1-Edificio-1-Piso-1-Cuarto-2",
-                            "hosts": 30
-                        },
-                        {
-                            "id": "Central-1-Edificio-1-Piso-1-Cuarto-3",
-                            "hosts": 30
-                        }
-                    ]
+                        {"id": "Central-1-Edificio-1-Piso-1-Cuarto-1", "hosts": 70},
+                        {"id": "Central-1-Edificio-1-Piso-1-Cuarto-2", "hosts": 30},
+                        {"id": "Central-1-Edificio-1-Piso-1-Cuarto-3", "hosts": 30},
+                    ],
                 },
-                {
-                    "id": "Central-1-Edificio-1-Piso-2",
-                    "hosts": 20
-                },
-                {
-                    "id": "Central-1-Edificio-1-Piso-3",
-                    "hosts": 20
-                },
-                {
-                    "id": "Central-1-Edificio-1-Piso-4",
-                    "hosts": 20
-                },
-                {
-                    "id": "Central-1-Edificio-1-Piso-5",
-                    "hosts": 20
-                },
-                {
-                    "id": "Central-1-Edificio-1-Piso-6",
-                    "hosts": 30
-                },
-            ]
+                {"id": "Central-1-Edificio-1-Piso-2", "hosts": 20},
+                {"id": "Central-1-Edificio-1-Piso-3", "hosts": 20},
+                {"id": "Central-1-Edificio-1-Piso-4", "hosts": 20},
+                {"id": "Central-1-Edificio-1-Piso-5", "hosts": 20},
+                {"id": "Central-1-Edificio-1-Piso-6", "hosts": 30},
+            ],
         },
         {
             "id": "Central-1-Edificio-2",
             "connections": [
-                {
-                    "id": "Central-1-Edificio-2-Piso-1",
-                    "hosts": 20
-                },
-                {
-                    "id": "Central-1-Edificio-2-Piso-2",
-                    "hosts": 20
-                },
-                {
-                    "id": "Central-1-Edificio-2-Piso-3",
-                    "hosts": 20
-                },
-                {
-                    "id": "Central-1-Edificio-2-Piso-4",
-                    "hosts": 20
-                },
-                {
-                    "id": "Central-1-Edificio-2-Piso-5",
-                    "hosts": 20
-                },
-                {
-                    "id": "Central-1-Edificio-2-Piso-6",
-                    "hosts": 30
-                },
-                {
-                    "id": "Central-1-Edificio-2-Piso-7",
-                    "hosts": 30
-                },
-            ]
+                {"id": "Central-1-Edificio-2-Piso-1", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-2", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-3", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-4", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-5", "hosts": 20},
+                {"id": "Central-1-Edificio-2-Piso-6", "hosts": 30},
+                {"id": "Central-1-Edificio-2-Piso-7", "hosts": 30},
+            ],
         },
-    ]
+    ],
 }
 
 
 if __name__ == "__main__":
     connections_table = extract_connections(red_central)
     ip_base = "192.162.0.0"
-    prefix = 24
-    #Usar Try Except para manejar el error de la máscara
-    #ValueError("Mask is too little for the network")
+    prefix = 17
+    # Usar Try Except para manejar el error de la máscara
+    # ValueError("Mask is too little for the network")
     red = subneteo(red_central, ip_base, prefix, connections_table)
 
     print("Structure")
@@ -289,4 +272,3 @@ if __name__ == "__main__":
 
     print("IPS connections")
     print_ip_connections(red["ip_connections"])
-
