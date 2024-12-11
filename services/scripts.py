@@ -1,4 +1,4 @@
-from services.routing import *
+from routing import *
 
 
 class RouterConf:
@@ -6,12 +6,16 @@ class RouterConf:
         self.id = ""
         self.interfaces = []
         self._interface_counter = 0
+        self.routes = []
 
     def add_interface(self, ip, mask):
         self.interfaces.append(
             {"name": f"FastEthernet0/{self._interface_counter}", "ip": ip, "mask": mask}
         )
         self._interface_counter += 1
+
+    def add_route(self, network, mask, gateway):
+        self.routes.append({"network": network, "mask": mask, "gateway": gateway})
 
     def __str__(self):
         return f"Router {self.id}\n{self.interfaces}"
@@ -20,6 +24,10 @@ class RouterConf:
         script = f"enable\nconfigure terminal\nhostname {self.id}\n"
         for interface in self.interfaces:
             script += f"interface {interface['name']}\nip address {interface['ip']} {interface['mask']}\nno shutdown\n"
+        for route in self.routes:
+            script += (
+                f"ip route {route['network']} {route['mask']} {route['gateway']}\n"
+            )
         script += "end\nwrite memory\n"
         return script
 
@@ -70,6 +78,8 @@ def fill_connections(connections: list, list: list[RouterConf]):
             ipr1 = conn["gateway"]
             router.add_interface(ipr1, mask)
             router2.add_interface(ipr2, mask)
+            router.add_route(str(conn["subnet"]), mask, ipr2)
+            router2.add_route(str(conn["subnet"]), mask, ipr1)
 
 
 def find_router(id, list):
@@ -120,7 +130,7 @@ red_central = {
 if __name__ == "__main__":
     connections_table = extract_connections(red_central)
     ip_base = "192.162.0.0"
-    prefix = 17
+    prefix = 15
     red = subneteo(red_central, ip_base, prefix, connections_table)
     router = red["central_router"]
     connections = red["ip_connections"]
