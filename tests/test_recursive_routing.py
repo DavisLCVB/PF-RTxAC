@@ -175,13 +175,18 @@ def print_ip_connections(node, level=0):
             print_ip_connections(sing_node["connections"], level + 1)
 
 
-def subneteo(root, ip_base, connections_table):
+def subneteo(root, ip_base, prefix, connections_table):
     populated_root = copy.deepcopy(root)
     populate_neighbors(populated_root, connections_table)
     populate_hosts_device(populated_root)
     print_network_structure(root)
 
-    central_router = Router("Central", ip_base, 32 - populated_root["bits"])
+    prefix_needed = 32 - populated_root["bits"]
+    print(f"Prefix needed: {prefix_needed}")
+    if prefix > prefix_needed:
+        raise ValueError("Mask is too little for the network")
+
+    central_router = Router("Central", ip_base, prefix_needed)
 
     ips_connections = []
     divide_network(root, central_router, ips_connections, connections_table)
@@ -273,7 +278,11 @@ red_central = {
 
 if __name__ == "__main__":
     connections_table = extract_connections(red_central)
-    red = subneteo(red_central, "192.162.0.0", connections_table)
+    ip_base = "192.162.0.0"
+    prefix = 24
+    #Usar Try Except para manejar el error de la máscara
+    #ValueError("Mask is too little for the network")
+    red = subneteo(red_central, ip_base, prefix, connections_table)
 
     print("Structure")
     red["central_router"].display_structure()
