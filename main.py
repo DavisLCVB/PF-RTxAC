@@ -9,7 +9,7 @@ import os
 
 load_dotenv()
 
-port = os.getenv("PORT")
+port = os.getenv("PORT") or 10000
 
 app = FastAPI(
     title="PF-RTXAC",
