@@ -175,7 +175,7 @@ def subneteo(root, ip_base, connections):
 
     ips_connections = []
     divide_network(root, central_router, ips_connections)
-    return { "ip_connections": ips_connections, "central_router": central_router }
+    return {"ip_connections": ips_connections, "central_router": central_router}
 
 red_central = {
     "id": "Central-1",
