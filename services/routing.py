@@ -53,7 +53,7 @@ def print_network_structure(node, level=0):
 
 def populate_hosts_device(device):
     if "hosts" in device and "connections" not in device:
-        # Si el router central tiene las conexiones finales (pcs), el return de bits cambia a solo retornar math.ceil(math.log2(device["hosts"]))
+        # Si el router central tiene las conexiones finales (pcs), el return de bits cambia a solo retornar math.ceil(math.log2(device['hosts']))
         device["bits"] = math.ceil(math.log2(device["hosts"] + 2 + 1))
         return {"hosts": device["hosts"]}
 
@@ -61,8 +61,6 @@ def populate_hosts_device(device):
         total_hosts = 0
         for connection in device["connections"]:
             total_hosts += populate_hosts_device(connection)["hosts"]
-
-
 
         if "hosts" in device:
             device["bits"] = math.ceil(
@@ -153,7 +151,7 @@ def divide_network(device, router: Router, ips_connections, connections_table):
             if i < num_subnets:
                 if i < len(device["connections"]):
                     subnet_router = Router(
-                        f"{device["connections"][i]['id']}",
+                        f"{device['connections'][i]['id']}",
                         subnet.network_address,
                         subnet.prefixlen,
                     )
@@ -169,7 +167,7 @@ def divide_network(device, router: Router, ips_connections, connections_table):
                         print("Device with hosts", device["id"])
 
                         subnet_router = Router(
-                            f"{device["id"]}-hosts",
+                            f"{device['id']}-hosts",
                             subnet.network_address,
                             subnet.prefixlen,
                         )
@@ -185,13 +183,13 @@ def print_ip_connections(node, level=0):
     """
     for sing_node in node:
         indent = "  " * level
-        print(f"{indent}- id: {sing_node["id"]}")
+        print(f"{indent}- id: {sing_node['id']}")
         if "ip" in sing_node:
-            print(f"{indent}  ip: {sing_node["ip"]}")
+            print(f"{indent}  ip: {sing_node['ip']}")
         if "subnet" in sing_node:
-            print(f"{indent}  subnet: {sing_node["subnet"]}")
+            print(f"{indent}  subnet: {sing_node['subnet']}")
         if "gateway" in sing_node:
-            print(f"{indent}  gateway: {sing_node["gateway"]}")
+            print(f"{indent}  gateway: {sing_node['gateway']}")
         if "connections" in sing_node:
             print(f"{indent}  connections:")
         if "connections" in sing_node:
