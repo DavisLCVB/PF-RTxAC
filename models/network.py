@@ -15,5 +15,6 @@ class NetworkInput(BaseModel):
 
 class NetworkInputSubnet(BaseModel):
     base_ip: str = Field(..., description="IP base de la red")
-    prefix: int = Field(..., description="Prefijo de la red")
+    mask: int = Field(..., description="Prefijo de la red")
     red: dict
+    table: list[dict]

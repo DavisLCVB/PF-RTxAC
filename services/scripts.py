@@ -16,12 +16,22 @@ class RouterConf:
     def __str__(self):
         return f"Router {self.id}\n{self.interfaces}"
 
+    def script(self) -> str:
+        script = f"enable\nconfigure terminal\nhostname {self.id}\n"
+        for interface in self.interfaces:
+            script += f"interface {interface['name']}\nip address {interface['ip']} {interface['mask']}\nno shutdown\n"
+        script += "end\nwrite memory\n"
+        return script
+
 
 def generate_scripts(router: Router, connections: list):
     list = []
     generate_network_structure(router, list)
     fill_connections(connections, list)
-    return list
+    script = ""
+    for router in list:
+        script += router.script() + "\n"
+    return script
 
 
 def generate_network_structure(router: Router, list: list[RouterConf]):
@@ -114,7 +124,5 @@ if __name__ == "__main__":
     red = subneteo(red_central, ip_base, prefix, connections_table)
     router = red["central_router"]
     connections = red["ip_connections"]
-    list = generate_scripts(router, connections)
-    print("-----")
-    for router in list:
-        print(router)
+    script = generate_scripts(router, connections)
+    print(script)
