@@ -10,7 +10,9 @@ def allocate_subnets(device, base_ip, prefix):
         # Contar las conexiones (hijos directos del nodo actual)
         num_connections = len(device["connections"])
         network = ipaddress.ip_network(f"{base_ip}/{prefix}", strict=False)
-        subnets = list(network.subnets(new_prefix=prefix + num_connections.bit_length() + 1))  # Subred para cada conexión
+        subnets = list(
+            network.subnets(new_prefix=prefix + num_connections.bit_length() + 1)
+        )  # Subred para cada conexión
 
         if len(subnets) < num_connections:
             raise ValueError(
@@ -26,18 +28,24 @@ def allocate_subnets(device, base_ip, prefix):
         for i, connection in enumerate(device["connections"]):
             connection_subnet = subnets[i]
             # Conexión router-actual -> router-hijo
-            device["router_subnets"].append({
-                "connection_to": connection["child_names"],
-                "subnet": str(connection_subnet),
-                "local_ip": str(connection_subnet.network_address + 1),
-                "remote_ip": str(connection_subnet.network_address + 2)
-            })
+            device["router_subnets"].append(
+                {
+                    "connection_to": connection["child_names"],
+                    "subnet": str(connection_subnet),
+                    "local_ip": str(connection_subnet.network_address + 1),
+                    "remote_ip": str(connection_subnet.network_address + 2),
+                }
+            )
 
             # Asignar IP remota al nodo hijo
             connection["router_ip"] = str(connection_subnet.network_address + 2)
 
             # Recursivamente asignar subredes a los hijos
-            allocate_subnets(connection, connection_subnet.network_address, connection_subnet.prefixlen)
+            allocate_subnets(
+                connection,
+                connection_subnet.network_address,
+                connection_subnet.prefixlen,
+            )
 
         # Conexiones entre routers en el mismo nivel (solo para routers de edificios)
         if device["child_names"].startswith("Area"):
@@ -45,12 +53,21 @@ def allocate_subnets(device, base_ip, prefix):
                 for j, conn2 in enumerate(device["connections"]):
                     if i < j:  # Evitar duplicar conexiones
                         interconnection_subnet = subnets.pop()
-                        device["router_subnets"].append({
-                            "connection_between": (conn1["child_names"], conn2["child_names"]),
-                            "subnet": str(interconnection_subnet),
-                            "ip_router_1": str(interconnection_subnet.network_address + 1),
-                            "ip_router_2": str(interconnection_subnet.network_address + 2)
-                        })
+                        device["router_subnets"].append(
+                            {
+                                "connection_between": (
+                                    conn1["child_names"],
+                                    conn2["child_names"],
+                                ),
+                                "subnet": str(interconnection_subnet),
+                                "ip_router_1": str(
+                                    interconnection_subnet.network_address + 1
+                                ),
+                                "ip_router_2": str(
+                                    interconnection_subnet.network_address + 2
+                                ),
+                            }
+                        )
 
     else:
         # Nodo final: asignar subred a hosts directos
@@ -59,10 +76,12 @@ def allocate_subnets(device, base_ip, prefix):
         device["direct_hosts"] = []
         device["gateway"] = str(network.network_address + 1)
         for i in range(device["hosts"]):
-            device["direct_hosts"].append({
-                "host_ip": str(network.network_address + i + 2),
-                "gateway": device["gateway"]
-            })
+            device["direct_hosts"].append(
+                {
+                    "host_ip": str(network.network_address + i + 2),
+                    "gateway": device["gateway"],
+                }
+            )
 
 
 def create_output_dict(device):
@@ -75,7 +94,9 @@ def create_output_dict(device):
         output["router_ip"] = device.get("router_ip")
         output["router_subnets"] = device.get("router_subnets", [])
 
-        output["connections"] = [create_output_dict(conn) for conn in device["connections"]]
+        output["connections"] = [
+            create_output_dict(conn) for conn in device["connections"]
+        ]
     else:
         output["direct_hosts_subnet"] = device.get("direct_hosts_subnet")
         output["gateway"] = device.get("gateway")
@@ -99,24 +120,24 @@ red_central = {
                     "connections": [
                         {"child_names": "Piso-1", "hosts": 7},
                         {"child_names": "Piso-2", "hosts": 5},
-                        {"child_names": "Piso-3", "hosts": 4}
-                    ]
+                        {"child_names": "Piso-3", "hosts": 4},
+                    ],
                 },
                 {
                     "child_names": "Edificio-2",
                     "connections": [
                         {"child_names": "Piso-1", "hosts": 6},
-                        {"child_names": "Piso-2", "hosts": 8}
-                    ]
+                        {"child_names": "Piso-2", "hosts": 8},
+                    ],
                 },
                 {
                     "child_names": "Edificio-3",
                     "connections": [
                         {"child_names": "Piso-1", "hosts": 4},
-                        {"child_names": "Piso-2", "hosts": 4}
-                    ]
-                }
-            ]
+                        {"child_names": "Piso-2", "hosts": 4},
+                    ],
+                },
+            ],
         },
         {
             "child_names": "Area-2",
@@ -125,12 +146,12 @@ red_central = {
                     "child_names": "Edificio-1",
                     "connections": [
                         {"child_names": "Piso-1", "hosts": 6},
-                        {"child_names": "Piso-2", "hosts": 5}
-                    ]
+                        {"child_names": "Piso-2", "hosts": 5},
+                    ],
                 }
-            ]
-        }
-    ]
+            ],
+        },
+    ],
 }
 
 

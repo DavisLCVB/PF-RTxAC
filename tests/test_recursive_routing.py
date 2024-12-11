@@ -9,7 +9,7 @@ Device {
 """
 import ipaddress
 import math
-
+import copy
 
 def extract_connections(node, parent=None):
     connections = []
@@ -124,6 +124,8 @@ def divide_network(device, router: Router, ips_connections):
     ip_connection = {"id": device["id"], "connections": []}
     if "connections" in device:
         num_subnets = len(device["connections"]) + 1  # +1 for neighbors
+        if "hosts" in device:
+            num_subnets += 1 # +1 for hosts
         subnets = router.subdivide_network(num_subnets)
 
         subnet_connetions = list(subnets[-1].subnets(new_prefix=30))
@@ -138,10 +140,17 @@ def divide_network(device, router: Router, ips_connections):
 
         ips_connections.append(ip_connection)
         for i, subnet in enumerate(subnets):
-            if i < len(device["connections"]):
-                subnet_router = Router(f"{device["connections"][i]['id']}", subnet.network_address, subnet.prefixlen)
-                divide_network(device["connections"][i], subnet_router, ips_connections)
-                router.add_child_router(subnet_router)
+            if i < num_subnets:
+                if( i < len(device["connections"])):
+                    subnet_router = Router(f"{device["connections"][i]['id']}", subnet.network_address, subnet.prefixlen)
+                    divide_network(device["connections"][i], subnet_router, ips_connections)
+                    router.add_child_router(subnet_router)
+                else:
+                    if("hosts" in device and i == num_subnets - 2):
+                        print("Device with hosts", device["id"])
+
+                        subnet_router = Router(f"{device["id"]}-hosts", subnet.network_address, subnet.prefixlen)
+                        router.add_child_router(subnet_router)
 
 
 def print_ip_connections(node, level=0):
@@ -167,21 +176,23 @@ def print_ip_connections(node, level=0):
 
 
 def subneteo(root, ip_base, connections):
-    populate_neighbors(root, connections)
-    populate_hosts_device(root)
+    populated_root = copy.deepcopy(root)
+    populate_neighbors(populated_root, connections)
+    populate_hosts_device(populated_root)
     print_network_structure(root)
 
-    central_router = Router("Central", ip_base, 32 - root["bits"])
+    central_router = Router("Central", ip_base, 32 - populated_root["bits"])
 
     ips_connections = []
     divide_network(root, central_router, ips_connections)
-    return {"ip_connections": ips_connections, "central_router": central_router}
+    return { "ip_connections": ips_connections, "central_router": central_router }
 
 red_central = {
     "id": "Central-1",
     "connections": [
         {
             "id": "Central-1-Edificio-1",
+            "hosts": 100,
             "connections": [
                 {
                     "id": "Central-1-Edificio-1-Piso-1",
@@ -267,5 +278,6 @@ if __name__ == "__main__":
     print("Structure")
     red["central_router"].display_structure()
 
-    print("Structure")
+    print("IPS connections")
     print_ip_connections(red["ip_connections"])
+
