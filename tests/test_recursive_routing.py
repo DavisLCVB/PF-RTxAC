@@ -279,7 +279,7 @@ red_central = {
 if __name__ == "__main__":
     connections_table = extract_connections(red_central)
     ip_base = "192.162.0.0"
-    prefix = 24
+    prefix = 16
     #Usar Try Except para manejar el error de la máscara
     #ValueError("Mask is too little for the network")
     red = subneteo(red_central, ip_base, prefix, connections_table)
