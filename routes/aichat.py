@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from services.openai import generateResponse
 from models.chat import ChatInput
-
+import json
 aichat = APIRouter()
 
 

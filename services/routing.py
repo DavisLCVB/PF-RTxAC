@@ -69,7 +69,7 @@ def populate_hosts_device(device):
         # Si el router central tiene las conexiones finales (pcs), el lamba cambia a retornar el length de connections
         device["bits"] = math.ceil(
             max(list(map(lambda x: x["bits"], device["connections"])))
-        ) + math.ceil(math.log2(device["neighbors"] + 2))
+        ) + math.ceil(math.log2(device["neighbors"]))
         return {"hosts": device["hosts"]}
 
 

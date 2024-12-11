@@ -8,6 +8,7 @@ network = APIRouter()
 
 @network.post("/generar-red")
 async def generate_network(red_central: NetworkInputSubnet):
+    print(red_central)
     red = subneteo(
         red_central.red, red_central.base_ip, red_central.mask, red_central.table
     )
