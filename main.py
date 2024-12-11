@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 # from routes.devices import devices
 from routes.network import network
 from routes.aichat import aichat
@@ -8,9 +9,12 @@ import os
 
 load_dotenv()
 
+port = os.getenv("PORT")
+
 app = FastAPI(
     title="PF-RTXAC",
     description="PF-RTXAC-API",
+    port=port,
 )
 
 # Configuración de CORS
